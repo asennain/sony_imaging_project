@@ -1,0 +1,5 @@
+libsonyapi
+pandas
+numpy
+opencv-python
+requests
