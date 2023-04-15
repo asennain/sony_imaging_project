@@ -12,7 +12,7 @@ def main():
     image_list = []
 
     # Loading image from file path
-    test_image = cv.imread(filename = r"D:\DCIM\16330413\DSC01956.JPG")
+    test_image = cv.imread(filename = r"D:\DCIM\16430414\DSC01959.JPG")
 
     # Resize image to (800, 1200)
     # Note that camera has 24 MP resolution 
@@ -33,21 +33,19 @@ def main():
     test_image_bin = cv.threshold(test_image_gray, 120, 255, cv.THRESH_BINARY)[1]
 
 
-    # Need to find edges for line detection later
-    edges = cv.Canny(test_image_bin, 200, 500, apertureSize=3)
-
     #! Test to see which threshold value yields max number of lines detected, use that threshold 
     threshold_xvals = []
     threshold_yvals = []
     for i in range(50,450,2):
-        lines = cv.HoughLinesP(test_image_bin, rho = 1,theta = 1*np.pi/180,threshold = i + 1, minLineLength = 350, maxLineGap = 1)
+        lines = cv.HoughLinesP(test_image_bin, rho = 10,theta = 1*np.pi/180,threshold = i + 1, minLineLength = 300, maxLineGap = 20)
         threshold_xvals.append(i)
         threshold_yvals.append(len(lines))
     # plt.plot(threshold_xvals, threshold_yvals)
     # plt.show()
 
+
     # List of all detected lines 
-    lines_list = cv.HoughLinesP(test_image_bin, rho = 1,theta = 1*np.pi/180,threshold = 400, minLineLength = 400, maxLineGap = 1)
+    lines_list = cv.HoughLinesP(test_image_bin, rho = 10,theta = 1*np.pi/180,threshold = 50, minLineLength = 300, maxLineGap = 20)
 
     # Plot all detected lines in blue
     for lines in lines_list:
@@ -136,11 +134,23 @@ def main():
         # Iterating over the grid returns the Axes.
         ax.imshow(image, cmap = 'gray')
 
+    # Find final angle
+    print(find_angle_from_lines(line1_points, line2_points))
+
     # Show the finished plot 
     plt.show()
 
     
-    print(find_angle_from_lines(line1_points, line2_points))
+   
+
+
+
+
+
+
+
+
+
 
 
 def shift_yvals(line_points, image_height):
