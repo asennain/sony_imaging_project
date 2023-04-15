@@ -2,17 +2,17 @@ import cv2 as cv
 import matplotlib.pyplot as plt
 import numpy as np
 from mpl_toolkits.axes_grid1 import ImageGrid
-import statistics
-from operator import itemgetter
+import pandas as pd 
+import math
 
 # Create list where all images are stores 
 image_list = []
 
 # Loading image from file path
-test_image = cv.imread(filename = r"D:\DCIM\16330413\DSC01956.JPG")
+test_image = cv.imread(filename = r"D:\DCIM\16430414\DSC01960.JPG")
 
 # Resize image to (800, 1200)
-# Note that camera has 24 MP resolution which is too high
+# Note that camera has 24 MP resolution which is high
 scale  = 0.2
 width = int(test_image.shape[1] * scale)
 height = int(test_image.shape[0] * scale)
@@ -34,125 +34,88 @@ test_image_bin = cv.threshold(test_image_gray, 120, 255, cv.THRESH_BINARY)[1]
 edges = cv.Canny(test_image_bin, 200, 500, apertureSize=3)
 
 # Now implement edge detection
-minLineLength = 100
-maxLineGap = 5
 
 #! Plot to see which threshold value yields max number of lines detected
-# threshold_xvals = []
-# threshold_yvals = []
-# for i in range(10,500):
-#     lines = cv.HoughLinesP(test_image_bin, rho = 1,theta = 1*np.pi/180,threshold = i + 1, minLineLength = 400, maxLineGap = 1)
-#     threshold_xvals.append(i)
-#     threshold_yvals.append(len(lines))
+# Automatically choose most optimal threshold value for cv.HoughLinesP()
+# ... Longer processing but better quality lines
+threshold_xvals = []
+threshold_yvals = []
+for i in range(10,400, 10):
+    lines = cv.HoughLinesP(test_image_bin, rho = 1,theta = 1*np.pi/180,threshold = i + 1, minLineLength = 400, maxLineGap = 1)
+    threshold_xvals.append(i)
+    threshold_yvals.append(len(lines))
+optimal_threshold = max(threshold_xvals)
 # plt.plot(threshold_xvals, threshold_yvals)
 # plt.show()
 
-lines_list = cv.HoughLinesP(test_image_bin, rho = 1,theta = 1*np.pi/180,threshold = 200, minLineLength = 400, maxLineGap = 1)
+# Plot detected lines onto original image
+lines_list = cv.HoughLinesP(test_image_bin, rho = 5,theta = 1*np.pi/180,threshold = optimal_threshold, minLineLength = 200, maxLineGap = 1)
+for lines in lines_list:
+    x1, y1, x2, y2 = lines[0]
+    # Plot all detected lines in red
+    cv.line(test_image, (x1, y1), (x2, y2), (255, 0, 0), 3)
 
-
-# Make list of each value for analysis
-x1_list_line1 = []
-y1_list_line1 = []
-x1_list_line2 = []
-y1_list_line2 = []
-x2_list_line1 = [] 
-y2_list_line1 = []
-x2_list_line2 = [] 
-y2_list_line2 = []
-
-#! Find which position the center point is located first 
-test_position_0 = []
-
-for i in range(len(lines_list)):
-    x1, y1, x2, y2 = lines_list[i][0]
-    # Will be in either position 0 or 2
-    test_position_0.append(lines_list[i][0][0])
     
-
-# if True then this position zero is x1 center and is instead position 2
-if statistics.stdev(test_position_0) < 50:
-    x2_position = 2
-    y2_position = 3
-    x1_position = 0 
-    y1_position = 1
-else:
-    x2_position = 0
-    y2_position = 1
-    x1_position = 2 
-    y1_position = 3
-
 # Change line_lists to list of tuples, easier sorting and accessing 
 lines_list_tuples = []
 for i in range(len(lines_list)):
     x1, y1, x2, y2 = lines_list[i][0]
     lines_list_tuples.append((x1, y1, x2, y2))
 
+# Create dataFrame to separate lines 
+group_lines_df = pd.DataFrame(lines_list_tuples, columns=['x1','y1', 'x2', 'y2'])
 
-# Reorder list from low to high by x2 value
-lines_list_tuples = sorted(lines_list_tuples, key=itemgetter(x2_position))
-print(lines_list_tuples)
-
-
-
-
-# Use these values to delineate x2, y2 points of lines using comparison
-# Average of first three values for first line, avg. of last three for last line
-x2_comparison_line1 = (lines_list_tuples[0][x2_position]+lines_list_tuples[1][x2_position] + lines_list_tuples[2][x2_position]) / 3
-y2_comparison_line1 = (lines_list_tuples[0][y2_position]+lines_list_tuples[1][y2_position] + lines_list_tuples[2][y2_position]) / 3
-
-x2_comparison_line2 = (lines_list_tuples[-1][x2_position]+lines_list_tuples[-2][x2_position] + lines_list_tuples[-3][x2_position]) / 3
-y2_comparison_line2 = (lines_list_tuples[-1][y2_position]+lines_list_tuples[-2][y2_position] + lines_list_tuples[-3][y2_position]) / 3
-
-print(x2_comparison_line1)
-print(x2_comparison_line2)
-
-for i in range(len(lines_list)):
-    x1, y1, x2, y2 = lines_list_tuples[i]
-
-    # Comparison needs to be made to delineate second points
-    # Line 1 delineation, use x2
-    if abs(lines_list_tuples[i][x2_position] - x2_comparison_line1) < 100:
-        x1_list_line1.append(lines_list_tuples[i][x1_position])
-        y1_list_line1.append(lines_list_tuples[i][y1_position])
-        x2_list_line1.append(lines_list_tuples[i][x2_position])
-        y2_list_line1.append(lines_list_tuples[i][y2_position])
-
-    elif abs(lines_list_tuples[i][x2_position] - x2_comparison_line2) < 100:
-        x1_list_line2.append(lines_list_tuples[i][x1_position])
-        y1_list_line2.append(lines_list_tuples[i][y1_position])
-        x2_list_line2.append(lines_list_tuples[i][x2_position])
-        y2_list_line2.append(lines_list_tuples[i][y2_position])
+# Create empty column to store angles 
+group_lines_df['angle'] = ''
 
 
-# Define function to take average of lists 
-def average(list):
-    return sum(list)/len(list)
+angles_compare = []
+for index, currentrow in group_lines_df.iterrows():
+    x = currentrow['x2'] - currentrow['x1']
+    y = currentrow['y2'] - currentrow['y1']
+    # vectors for dot product 
+    a = np.array([x, y])
+    b = np.array([100, 100])
 
-# First point for both lines 
-x1_line1 = average(x1_list_line1)
-y1_line1 = average(y1_list_line1)
-x1_line2 = average(x1_list_line2)
-y1_line2 = average(y1_list_line2)
-x2_line1 = average(x2_list_line1)
-y2_line1 = average(y2_list_line1)
-x2_line2 = average(x2_list_line2)
-y2_line2 = average(y2_list_line2)
+    # Find comparison angle by comparing dot product against hypothetical vector (100,100)
+    angles_compare.append(math.acos(   np.dot(a, b)    /    ((np.linalg.norm(a))*(np.linalg.norm(b)))     ))
 
-# Highlight average line #1
-cv.line(test_image, (int(x1_line1), int(y1_line1)), (int(x2_line1), int(y2_line1)), (0, 0, 255), 10)
+group_lines_df['angle'] = angles_compare
+    
 
-# Highlight line #2 using average values
-cv.line(test_image, (int(x1_line2), int(y1_line2)), (int(x2_line2), int(y2_line2)), (0, 0, 255), 10)
+# Now sort the DataFrame by grouping the angles relative to comparison vector, given in angle column, reset index because it shifts 
+group_lines_df_sorted = group_lines_df.sort_values(by = ['angle']).reset_index().drop('index', axis = 1)
+
+
+
+
+#! Now need to obtain the index where line 2 starts 
+# .idmax() returs Pandas Series object with index location of max for every column, angles max difference is 5th element in this Series 
+line2_index = int(group_lines_df_sorted.diff().idxmax()[4])
+line1_df = group_lines_df_sorted[:line2_index].reset_index().drop('index', axis = 1).drop('angle', axis = 1)
+line2_df = group_lines_df_sorted[line2_index:].reset_index().drop('index', axis = 1).drop('angle', axis = 1)
+
+
+
+# Highlight line #1 using average value points
+# cv.line(test_image, int(line2_df.mean(axis = 0)[0]), int(line2_df.mean(axis = 0)[1]), int(line2_df.mean(axis = 0)[2]), int(line2_df.mean(axis = 0)[3]), (0, 0, 255), 10)
+cv.line(test_image, (int(line2_df.mean(axis = 0)[0]), int(line2_df.mean(axis = 0)[1])), (int(line2_df.mean(axis = 0)[2]), int(line2_df.mean(axis = 0)[3])), (0, 255, 0), 10)
+cv.line(test_image, (int(line1_df.mean(axis = 0)[0]), int(line1_df.mean(axis = 0)[1])), (int(line1_df.mean(axis = 0)[2]), int(line1_df.mean(axis = 0)[3])), (0, 255, 0), 10)
+
+
 print(f"Number of lines detected: {len(lines_list)}")
 
-# Create a figure
+# # Create a figure
 fig = plt.figure(figsize=(6, 6), facecolor="Black")
-grid = ImageGrid(fig, 111,  # similar to subplot(111)
-                 nrows_ncols=(1,4),  # creates 2x2 grid of axes
-                 axes_pad=0.1,  # pad between axes in inch.
+grid = ImageGrid(
+                    fig, 
+                    111,  # similar to subplot(111)
+                    nrows_ncols=(1,4),  # creates 2x2 grid of axes
+                    axes_pad=0.1,  # pad between axes in inch.
+
                  )
 
-
+# Plot them bad boys (processed images)
 for ax, image in zip(grid, image_list):
     # Iterating over the grid returns the Axes.
     ax.imshow(image, cmap = 'gray')
