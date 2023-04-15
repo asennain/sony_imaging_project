@@ -1,0 +1,2 @@
+DUTY_CYCLE_LIST = [.6, .7, .8, .9, 1]
+FLASH_HERTZ = 45
