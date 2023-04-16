@@ -46,8 +46,7 @@ def center_point_first(line1_points, line2_points):
     )
     # find which condition in the list sets center points based on least value in point_differences[] 
     # ... if difference between two points is very small, this is in indication those are our center points for both lines
-    point_differences.index(min(point_differences))
-
+    
 
     if point_differences.index(min(point_differences)) == 0:
     # do nothing, points are already in correct np.array([xc, yc, x1, y1]) form
@@ -60,12 +59,15 @@ def center_point_first(line1_points, line2_points):
         # second line is in correct form, but first line needs to switch first point
         line1_points = np.append(line1_points[2:], line1_points[:2])
 
+
     elif point_differences.index(min(point_differences)) == 3:
         # Both lines need to be switched and redefined
         line1_points = np.append(line1_points[2:], line1_points[:2])
         line2_points = np.append(line2_points[2:], line2_points[:2])
 
-def get_image_data(folder, image, flash_hertz):
+    return line1_points, line2_points
+
+def get_image_data(folder, image, flash_hertz, duty_cycle):
 
     # Loading image from file path
     test_image = cv.imread(filename = os.path.join(folder, image))
@@ -82,18 +84,7 @@ def get_image_data(folder, image, flash_hertz):
     test_image_gray = cv.cvtColor(test_image, cv.COLOR_BGR2GRAY)
 
     # Binarize image
-    test_image_bin = cv.threshold(test_image_gray, 120, 255, cv.THRESH_BINARY)[1]
-
-    #! Test to see which threshold value yields max number of lines detected, use that threshold 
-    threshold_xvals = []
-    threshold_yvals = []
-    for i in range(50,450,2):
-        lines = cv.HoughLinesP(test_image_bin, rho = 10,theta = 1*np.pi/180,threshold = i + 1, minLineLength = 300, maxLineGap = 20)
-        threshold_xvals.append(i)
-        threshold_yvals.append(len(lines))
-    # plt.plot(threshold_xvals, threshold_yvals)
-    # plt.show()
-
+    test_image_bin = cv.threshold(test_image_gray, 140, 255, cv.THRESH_BINARY)[1]
 
     # List of all detected lines 
     lines_list = cv.HoughLinesP(test_image_bin, rho = 10,theta = 1*np.pi/180,threshold = 50, minLineLength = 300, maxLineGap = 20)
@@ -101,7 +92,7 @@ def get_image_data(folder, image, flash_hertz):
     # Plot all detected lines in blue
     for lines in lines_list:
         x1, y1, x2, y2 = lines[0]
-        cv.line(test_image, (x1, y1), (x2, y2), (0, 0, 255), 3)
+        cv.line(test_image, (x1, y1), (x2, y2), (0, 0, 255), 10)
         
     # Change line_lists to list of tuples, easier sorting and accessing 
     lines_list_tuples = []
@@ -122,7 +113,7 @@ def get_image_data(folder, image, flash_hertz):
         y = currentrow['y2'] - currentrow['y1']
         # vectors for dot product 
         a = np.array([x, y])
-        b = np.array([100, 100])
+        b = np.array([0, 1000])
 
         # Find comparison angle by comparing dot product against hypothetical vector (100,100)
         angles_compare.append(math.acos(   np.dot(a, b)    /    ((np.linalg.norm(a))*(np.linalg.norm(b)))     ))
@@ -132,7 +123,6 @@ def get_image_data(folder, image, flash_hertz):
 
     # Now sort the DataFrame by grouping the angles relative to comparison vector, given in angle column, reset index (shifts after .sort_values)
     group_lines_df_sorted = group_lines_df.sort_values(by = ['angle']).reset_index().drop('index', axis = 1)
-
     #! Now need to obtain the index where line 2 starts so we can split the DataFrame for each line
     # .idmax() returs Pandas Series object with index location of max for every column, angles max difference is 5th element in this Series 
     line2_index = int(group_lines_df_sorted.diff().idxmax()[4])
@@ -140,8 +130,8 @@ def get_image_data(folder, image, flash_hertz):
     line2_df = group_lines_df_sorted[line2_index:].reset_index().drop('index', axis = 1).drop('angle', axis = 1)
 
     # Highlight lines using average value points from respective line 1 DataFrame
-    cv.line(test_image, (int(line1_df.mean(axis = 0)[0]), int(line1_df.mean(axis = 0)[1])), (int(line1_df.mean(axis = 0)[2]), int(line1_df.mean(axis = 0)[3])), (0, 255, 0), 10)
-    cv.line(test_image, (int(line2_df.mean(axis = 0)[0]), int(line2_df.mean(axis = 0)[1])), (int(line2_df.mean(axis = 0)[2]), int(line2_df.mean(axis = 0)[3])), (0, 255, 0), 10)
+    cv.line(test_image, (int(line1_df.mean(axis = 0)[0]), int(line1_df.mean(axis = 0)[1])), (int(line1_df.mean(axis = 0)[2]), int(line1_df.mean(axis = 0)[3])), (0, 255, 0), 1)
+    cv.line(test_image, (int(line2_df.mean(axis = 0)[0]), int(line2_df.mean(axis = 0)[1])), (int(line2_df.mean(axis = 0)[2]), int(line2_df.mean(axis = 0)[3])), (0, 255, 0), 1)
     
 
 
@@ -161,23 +151,25 @@ def get_image_data(folder, image, flash_hertz):
     
     # Set point types based off of point_differences (identify center)
     # This is where first two points are already center points for both lines 
-    center_point_first(line1_points, line2_points)
+    line1_points = center_point_first(line1_points, line2_points)[0]
+    line2_points = center_point_first(line1_points, line2_points)[1]
+
     # Highlight center points for each line
     cv.circle(test_image, tuple(line1_points[:2]), radius=20, color=(255, 0, 0), thickness=-2)
     cv.circle(test_image, tuple(line2_points[:2]), radius=20, color=(255, 0, 0), thickness=-2)
     # Highlight end points for each line 
-    cv.circle(test_image, tuple(line1_points[2:]), radius=20, color=(255, 255, 0), thickness=-2)
-    cv.circle(test_image, tuple(line2_points[2:]), radius=20, color=(255, 255, 0), thickness=-2)
+    cv.circle(test_image, tuple(line1_points[2:]), radius=20, color=(0, 255, 0), thickness=-2)
+    cv.circle(test_image, tuple(line2_points[2:]), radius=20, color=(0, 255, 0), thickness=-2)
 
     # Make sure points reflect normal x-y plane, openCV treats top of image as zero y point, set bottom as zero 
-    shift_yvals(line1_points, image_height = height)
-    shift_yvals(line2_points, image_height = height)
+    # shift_yvals(line1_points, image_height = height)
+    # shift_yvals(line2_points, image_height = height)
         
 
     # print(f"Formatted points (center points first). Line 1: {line1_points}, Line 2: {line2_points}\n")
     # print(f"Number of lines detected: {len(lines_list)}")
 
-
+   
     # Find final angle
     angular_velocity = find_angle_from_lines(line1_points, line2_points, flash_hertz)
-    return test_image, line1_points, line2_points, angular_velocity
+    return test_image, line1_points, line2_points, angular_velocity, duty_cycle
