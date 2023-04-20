@@ -17,11 +17,11 @@ def shift_yvals(line_points, image_height):
   
 
 
-def find_angle_from_lines(line1, line2, flash_hertz):
+def find_rpm_from_lines(line1, line2, flash_hertz):
         """
         line1 and line2 are np.array([xc, yc, x2, y2])
         """
-        # find difference between x and y for each line
+        # find delta x and delta y for each line
         line1 = np.array([line1[2]-line1[0], line1[3]-line1[1]]) 
         line2 = np.array([line2[2]-line2[0], line2[3]-line2[1]]) 
         final_angle = math.acos(   np.dot(line1, line2)    /    ((np.linalg.norm(line1))*(np.linalg.norm(line2))) ) * 180/np.pi
@@ -44,10 +44,10 @@ def center_point_first(line1_points, line2_points):
             np.sum(np.abs(line1_points[2:] - line2_points[2:])),
         )
     )
+
     # find which condition in the list sets center points based on least value in point_differences[] 
     # ... if difference between two points is very small, this is in indication those are our center points for both lines
     
-
     if point_differences.index(min(point_differences)) == 0:
     # do nothing, points are already in correct np.array([xc, yc, x1, y1]) form
         pass
@@ -68,7 +68,9 @@ def center_point_first(line1_points, line2_points):
     return line1_points, line2_points
 
 def get_image_data(folder, image, flash_hertz, duty_cycle):
-
+    """
+    return test_image, sorted_line1_points, sorted_line2_points, angular_velocity, duty_cycle
+    """
     # Loading image from file path
     test_image = cv.imread(filename = os.path.join(folder, image))
 
@@ -100,13 +102,15 @@ def get_image_data(folder, image, flash_hertz, duty_cycle):
         x1, y1, x2, y2 = lines_list[i][0]
         lines_list_tuples.append((x1, y1, x2, y2))
 
-    # Create dataFrame to differentiate first and second lines 
+    # Create DataFrame to differentiate first and second lines 
     group_lines_df = pd.DataFrame(lines_list_tuples, columns=['x1','y1', 'x2', 'y2'])
 
     # Create empty column used to identify lines, (using arbitrary dot product)
     group_lines_df['angle'] = ''
 
-
+    # To filter the data so that both lines are separated, find the dot product for 
+    # ... each line in hough() to some random vector, group lines by similar angle from
+    # ... taking dot product with this random vector  
     angles_compare = []
     for index, currentrow in group_lines_df.iterrows():
         x = currentrow['x2'] - currentrow['x1']
@@ -115,7 +119,7 @@ def get_image_data(folder, image, flash_hertz, duty_cycle):
         a = np.array([x, y])
         b = np.array([0, 1000])
 
-        # Find comparison angle by comparing dot product against hypothetical vector (100,100)
+        # Find comparison angle by comparing dot product against hypothetical vector (0,1000)
         angles_compare.append(math.acos(   np.dot(a, b)    /    ((np.linalg.norm(a))*(np.linalg.norm(b)))     ))
 
     # Appending column to DataFrame, can sort lines by angle
@@ -123,6 +127,7 @@ def get_image_data(folder, image, flash_hertz, duty_cycle):
 
     # Now sort the DataFrame by grouping the angles relative to comparison vector, given in angle column, reset index (shifts after .sort_values)
     group_lines_df_sorted = group_lines_df.sort_values(by = ['angle']).reset_index().drop('index', axis = 1)
+
     #! Now need to obtain the index where line 2 starts so we can split the DataFrame for each line
     # .idmax() returs Pandas Series object with index location of max for every column, angles max difference is 5th element in this Series 
     line2_index = int(group_lines_df_sorted.diff().idxmax()[4])
@@ -133,7 +138,6 @@ def get_image_data(folder, image, flash_hertz, duty_cycle):
     cv.line(test_image, (int(line1_df.mean(axis = 0)[0]), int(line1_df.mean(axis = 0)[1])), (int(line1_df.mean(axis = 0)[2]), int(line1_df.mean(axis = 0)[3])), (0, 255, 0), 1)
     cv.line(test_image, (int(line2_df.mean(axis = 0)[0]), int(line2_df.mean(axis = 0)[1])), (int(line2_df.mean(axis = 0)[2]), int(line2_df.mean(axis = 0)[3])), (0, 255, 0), 1)
     
-
 
     # Unformatted lines as list, not in np.array([xc,yc,x2,y2]) form, need center points to come first
     line1_points = line1_df.mean(axis = 0).astype(int).values.tolist()
@@ -171,5 +175,5 @@ def get_image_data(folder, image, flash_hertz, duty_cycle):
 
    
     # Find final angle
-    angular_velocity = find_angle_from_lines(line1_points, line2_points, flash_hertz)
+    angular_velocity = find_rpm_from_lines(line1_points, line2_points, flash_hertz)
     return test_image, line1_points, line2_points, angular_velocity, duty_cycle

@@ -7,7 +7,7 @@ from pathlib import Path
 from constants import DUTY_CYCLE_LIST
 
 #! Set folder 
-folder = r"D:\DCIM\Test2"
+folder = r"C:\Users\asenn\OneDrive\School\Courses\ME 695\Project\Test2"
 images_list = os.listdir(folder)
 
 #  Get all needed experiment data from images, assign PWM values as well to image return values 
@@ -45,5 +45,5 @@ for i in range(len(image_data)):
 
 ax_data.plot(pwm_data, rpm_data, 'bo')
 ax_data.set_xlabel("PWM Duty Cycle (%)")
-ax_data.set_ylabel("RPM")
+ax_data.set_ylabel("Revolutions Per Minute (RPM)")
 plt.show()
