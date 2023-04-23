@@ -88,6 +88,10 @@ def get_image_data(folder, image, flash_hertz, duty_cycle):
     # Binarize image
     test_image_bin = cv.threshold(test_image_gray, 140, 255, cv.THRESH_BINARY)[1]
 
+    # # Erode image 
+    # kernel = np.ones((3,3), np.uint8)
+    # test_image_bin = cv.erode(test_image_bin, kernel, iterations=3)
+
     # List of all detected lines 
     lines_list = cv.HoughLinesP(test_image_bin, rho = 10,theta = 1*np.pi/180,threshold = 50, minLineLength = 300, maxLineGap = 20)
 
@@ -149,7 +153,6 @@ def get_image_data(folder, image, flash_hertz, duty_cycle):
 
     # print(f"Unformatted points, Line 1: {line1_points} Line 2: {line2_points}\n")
 
-
     #! Important that we have points in form with center first so dot product is accurate 
     #! ... goal is to have array for each line as np.array([xc, yc, x1, y1])
     
@@ -169,7 +172,6 @@ def get_image_data(folder, image, flash_hertz, duty_cycle):
     # shift_yvals(line1_points, image_height = height)
     # shift_yvals(line2_points, image_height = height)
         
-
     # print(f"Formatted points (center points first). Line 1: {line1_points}, Line 2: {line2_points}\n")
     # print(f"Number of lines detected: {len(lines_list)}")
 
