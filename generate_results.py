@@ -45,5 +45,5 @@ for i in range(len(image_data)):
 
 ax_data.plot(pwm_data, rpm_data, 'bo')
 ax_data.set_xlabel("PWM Duty Cycle (%)")
-ax_data.set_ylabel("Revolutions Per Minute (RPM)")
+ax_data.set_ylabel("Motor Speed (RPM)")
 plt.show()
